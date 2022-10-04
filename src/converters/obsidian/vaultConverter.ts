@@ -32,7 +32,7 @@ const maybeDecode = (x: string) => {
  * Converts the vault to the Tana format and incrementally saves it, otherwise it would be to memory intensive on big vaults.
  * Due to the incremental approach the output-file will be valid JSON but not be formatted perfectly.
  */
-export function convertVault(vaultPath: string, today: number = Date.now(), idGenerator: IdGenerator = idgenerator) {
+export function convertVault(vaultPath: string, dailyNoteFormat: string, today: number = Date.now(), idGenerator: IdGenerator = idgenerator) {
   const iter = getFiles(vaultPath);
 
   if (vaultPath.endsWith('/')) {
@@ -58,6 +58,7 @@ export function convertVault(vaultPath: string, today: number = Date.now(), idGe
     const [fileNode, updatedSummary, links] = convertObsidianFile(
       path.basename(filePath).replace('.md', ''),
       readFileSync(filePath, 'utf-8'),
+      dailyNoteFormat,
       summary,
       today,
       idGenerator,
@@ -73,7 +74,7 @@ export function convertVault(vaultPath: string, today: number = Date.now(), idGe
   const pagesInTana = [...pagesToCreate]
     .map((x) =>
       JSON.stringify(
-        createFileNode(maybeDecode(x), today, (link) => link),
+        createFileNode(maybeDecode(x), today, (link) => link, dailyNoteFormat),
         null,
         2,
       ),

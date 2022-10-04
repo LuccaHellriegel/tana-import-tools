@@ -1,6 +1,7 @@
 import { TanaIntermediateFile, TanaIntermediateNode, TanaIntermediateSummary } from '../../types/types';
 import { getBracketLinks, idgenerator } from '../../utils/utils';
 import { HierarchyType, MarkdownNode, extractMarkdownNodes } from './markdown/extractMarkdownNodes';
+import { dateStringToDateUID, isDailyNote } from './utils';
 
 function createChildNode(obsidianNode: MarkdownNode, today: number, idGenerator: IdGenerator): TanaIntermediateNode {
   return {
@@ -12,7 +13,12 @@ function createChildNode(obsidianNode: MarkdownNode, today: number, idGenerator:
   };
 }
 
-export function createFileNode(displayName: string, today: number, uidFinder: UidFinder): TanaIntermediateNode {
+export function createFileNode(displayName: string, today: number, uidFinder: UidFinder, dailyNotePattern: string): TanaIntermediateNode 
+{
+  if(isDailyNote(displayName, dailyNotePattern)){
+    const calendarName = dateStringToDateUID(displayName, dailyNotePattern);
+    return { uid: uidFinder(calendarName), name: calendarName, createdAt: today, editedAt: today, type: 'date' };
+  }
   return { uid: uidFinder(displayName), name: displayName, createdAt: today, editedAt: today, type: 'node' };
 }
 
@@ -24,8 +30,8 @@ export type IdGenerator = () => string;
  */
 export type UidFinder = (obsidianLink: string) => string;
 
-export function ObsidianSingleFileConverter(fileName: string, fileContent: string): TanaIntermediateFile {
-  const [node, summary] = convertObsidianFile(fileName, fileContent) as [
+export function ObsidianSingleFileConverter(fileName: string, fileContent: string, dailyNotePattern?: string): TanaIntermediateFile {
+  const [node, summary] = convertObsidianFile(fileName, fileContent, dailyNotePattern) as [
     TanaIntermediateNode,
     TanaIntermediateSummary,
     string[],
@@ -41,6 +47,7 @@ export function ObsidianSingleFileConverter(fileName: string, fileContent: strin
 export function convertObsidianFile(
   fileName: string, //without ending
   fileContent: string,
+  dailyNoteFormat: string = 'YYYY-MM-DD',
   summary: TanaIntermediateSummary = {
     leafNodes: 0,
     topLevelNodes: 0,
@@ -67,7 +74,7 @@ export function convertObsidianFile(
     obsidianNodes = obsidianNodes.slice(1);
   }
 
-  const rootNode = createFileNode(displayName, today, uidFinder);
+  const rootNode = createFileNode(displayName, today, uidFinder, dailyNoteFormat);
   summary.topLevelNodes++;
 
   summary.leafNodes += obsidianNodes.length;

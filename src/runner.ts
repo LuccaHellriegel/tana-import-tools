@@ -11,6 +11,7 @@ import { convertVault } from './converters/obsidian/vaultConverter';
 
 const fileType = process.argv[2];
 const file = process.argv[3];
+const obsidianDailyNoteFormat = process.argv[4];
 
 if (!fileType) {
   console.log('No file type provided');
@@ -49,7 +50,7 @@ function handleSingleFileConversion() {
       tanaIntermediteFile = new WorkflowyConverter().convert(contents);
       break;
     case 'obsidian':
-      tanaIntermediteFile = ObsidianSingleFileConverter(path.basename(file).replace('.md', ''), contents);
+      tanaIntermediteFile = ObsidianSingleFileConverter(path.basename(file).replace('.md', ''), contents, obsidianDailyNoteFormat);
       break;
     default:
       console.log(`File type ${fileType} is not supported for single files`);
@@ -71,7 +72,7 @@ function handleFolderConversion() {
   let summary;
   switch (fileType) {
     case 'obsidian':
-      summary = convertVault(file);
+      summary = convertVault(file, obsidianDailyNoteFormat);
       break;
     default:
       console.log(`File type ${fileType} is not supported for folders`);
