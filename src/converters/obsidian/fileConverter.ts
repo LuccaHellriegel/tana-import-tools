@@ -28,8 +28,8 @@ export type IdGenerator = () => string;
 export function convertObsidianFile(
   fileName: string, //without ending
   fileContent: string,
+  dailyNoteFormat: string = 'YYYY-MM-DD', //defaults to obsidian default Daily note format
   context: VaultContext = new VaultContext(),
-  dailyNoteFormat: string = 'YYYY-MM-DD',
   today: number = Date.now(),
   idGenerator: IdGenerator = idgenerator,
 ): [TanaIntermediateNode, TanaIntermediateSummary, string[]] {

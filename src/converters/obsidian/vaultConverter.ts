@@ -59,8 +59,8 @@ export function convertVault(vaultPath: string, dailyNoteFormat: string, today: 
     const [fileNode, updatedSummary, links] = convertObsidianFile(
       path.basename(filePath).replace('.md', ''),
       readFileSync(filePath, 'utf-8'),
-      vaultContext,
       dailyNoteFormat,
+      vaultContext,
       today,
       idGenerator,
     ) as [TanaIntermediateNode, TanaIntermediateSummary, string[]];
