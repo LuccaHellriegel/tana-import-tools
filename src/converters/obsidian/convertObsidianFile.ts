@@ -1,10 +1,10 @@
-import { NodeType, TanaIntermediateNode } from '../../types/types';
 import { convertMarkdownNode } from './convertMarkdownNode';
+import { createFileNode } from './createFileNode';
 import { createTree } from './createTree';
 import { HierarchyType, MarkdownNode, extractMarkdownNodes } from './extractMarkdownNodes';
 import { HeadingTracker } from './filterHeadingLinks';
-import { UidRequestType, VaultContext } from './VaultContext';
-import moment from 'moment'
+import { FrontmatterData, parseFrontmatter } from './parseFrontmatter';
+import { VaultContext } from './VaultContext';
 
 export function convertObsidianFile(
   fileName: string, //without ending
@@ -15,10 +15,12 @@ export function convertObsidianFile(
 ) {
   let startIndex = 0;
 
+  let frontmatter: FrontmatterData[] = [];
   if (fileContent.startsWith('---\n')) {
     const frontMatterEndIndex = fileContent.indexOf('\n---\n');
     if (frontMatterEndIndex !== -1) {
       startIndex = frontMatterEndIndex + '\n---\n'.length;
+      frontmatter = parseFrontmatter(fileContent.slice('---\n'.length, frontMatterEndIndex));
     }
   }
 
@@ -39,7 +41,7 @@ export function convertObsidianFile(
 
   const headingNodes: (MarkdownNode & { uid: string })[] = [];
 
-  const fileNode = createFileNode(displayName, today, context);
+  const fileNode = createFileNode(displayName, today, context, frontmatter);
 
   createTree(
     fileNode,
@@ -59,26 +61,6 @@ export function convertObsidianFile(
   headingTracker?.set(fileName, headingNodes);
 
   return fileNode;
-}
-
-function createFileNode(displayName: string, today: number, context: VaultContext): TanaIntermediateNode {
-  let nodeUid = context.uidRequest(displayName, UidRequestType.FILE);
-  let nodeType: NodeType = 'node';
-  const dateDisplayName =  dateStringToDateUID(displayName, context.dailyNoteFormat);
-
-  if (dateDisplayName.length > 0) {
-    nodeUid = dateDisplayName;
-    nodeType = 'date';
-    displayName = dateDisplayName;
-  }
-
-  return {
-    uid: nodeUid,
-    name: displayName,
-    createdAt: today,
-    editedAt: today,
-    type: nodeType,
-  };
 }
 
 function isChild(potentialParent: MarkdownNode, potentialChild: MarkdownNode) {
@@ -103,12 +85,3 @@ function isChild(potentialParent: MarkdownNode, potentialChild: MarkdownNode) {
   return false;
 }
 
-
-function dateStringToDateUID(displayName: string, dateFormat: string): string
-{
-  let date= moment(displayName, dateFormat);
-  if (date.isValid()){
-    return date.format('MM-DD-YYYY');
-  }
-  return '';
-}

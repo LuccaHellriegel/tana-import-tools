@@ -1,4 +1,4 @@
-import { TanaIntermediateSummary } from '../..';
+import { TanaIntermediateSummary, TanaIntermediateSupertag } from '../..';
 import { idgenerator as randomGenerator } from '../../utils/utils';
 import fs from 'fs'
 
@@ -91,6 +91,7 @@ export class VaultContext {
   //all block uids: <fileName, <blockObsidianUid, TanaUid>>
   blockLinkTracker = new Map<string, Map<string, BlockUidData>>();
   invalidLinks: { uid: string; link: string }[] = [];
+  superTagTracker = new Map<string, string>();
 
   dailyNoteFormat = 'YYYY-MM-DD' //Default obsidian Daily note format
 
@@ -247,4 +248,20 @@ export class VaultContext {
     return unlinkedNodes;
   }
 
+  /**
+   *
+   * @param tag without the #
+   */
+  superTagUid(tag: string) {
+    let uid = this.superTagTracker.get(tag);
+    if (uid === undefined) {
+      uid = this.idGenerator();
+      this.superTagTracker.set(tag, uid);
+    }
+    return uid;
+  }
+
+  createSuperTagObjects(): TanaIntermediateSupertag[] {
+    return Array.from(this.superTagTracker.entries()).map((entry) => ({ name: entry[0], uid: entry[1] }));
+  }
 }
