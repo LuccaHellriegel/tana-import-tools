@@ -1,6 +1,7 @@
 import { appendFileSync, Dirent, readdirSync, readFileSync } from 'fs';
 import path, { resolve } from 'path';
 import { convertObsidianFile } from './convertObsidianFile';
+import { HeadingTracker } from './filterHeadingLinks';
 import { VaultContext } from './VaultContext';
 
 enum ChildrenPosition {
@@ -28,7 +29,7 @@ export function handleVault(
   for (let index = 0; index < dirents.length; index++) {
     const dirent = dirents[index];
     const res = resolve(dir, dirent.name);
-    if (dirent.isDirectory()) {
+    if (dirent.isDirectory() && !res.endsWith('.github') && !res.endsWith('.obsidian')) {
       handleVault(res, handleDirStart, handleDirEnd, handleFile, getChildrenPosition(index, dirents));
     } else if (res.endsWith('.md')) {
       handleFile(res, getChildrenPosition(index, dirents));
@@ -68,13 +69,19 @@ export function addParentNodeEnd(targetPath: string) {
   };
 }
 
-export function addFileNode(targetPath: string, today: number, vaultContext: VaultContext) {
+export function addFileNode(
+  targetPath: string,
+  today: number,
+  vaultContext: VaultContext,
+  headingTracker: HeadingTracker,
+) {
   return (file: string, childrenPosition: ChildrenPosition) => {
     const fileNode = convertObsidianFile(
       path.basename(file).replace('.md', ''),
       readFileSync(file, 'utf-8'),
       vaultContext,
       today,
+      headingTracker,
     );
     appendFileSync(targetPath, JSON.stringify(fileNode, null, 2));
     if (childrenPosition !== ChildrenPosition.LAST) {

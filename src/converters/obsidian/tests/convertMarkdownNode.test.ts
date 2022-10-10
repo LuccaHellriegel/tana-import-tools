@@ -1,5 +1,4 @@
 import { expect, test } from '@jest/globals';
-import { readFileSync } from 'fs';
 import { extractMarkdownNodes, HierarchyType, countEmptySpace, nextNewLine } from '../extractMarkdownNodes';
 
 test('headings', () => {
@@ -168,55 +167,6 @@ https://some.url/
       content: '4. etc. ',
       level: 0,
       type: HierarchyType.OUTLINE,
-    },
-  ]);
-  expect(
-    extractMarkdownNodes(readFileSync('./src/converters/obsidian/tests/fixtures/vault/test.md', 'utf-8')),
-  ).toStrictEqual([
-    {
-      content: 'Starting without [[heading]].',
-      level: 0,
-      type: HierarchyType.PARAGRAPH,
-    },
-    {
-      content: 'Heading here',
-      level: 1,
-      type: HierarchyType.HEADING,
-    },
-    {
-      content: '[[Some]]',
-      level: 0,
-      type: HierarchyType.PARAGRAPH,
-    },
-    {
-      content: 'Stuff but with\na newline.',
-      level: 0,
-      type: HierarchyType.PARAGRAPH,
-    },
-    {
-      content: 'Heading 2',
-      level: 2,
-      type: HierarchyType.HEADING,
-    },
-    {
-      content: 'Some',
-      level: 0,
-      type: HierarchyType.OUTLINE,
-    },
-    {
-      content: 'Block with [[Link]] [[Link2]] ^BLOCK_UID',
-      level: 4,
-      type: HierarchyType.OUTLINE,
-    },
-    {
-      content: 'Fun',
-      level: 2,
-      type: HierarchyType.OUTLINE,
-    },
-    {
-      content: 'Out of Level',
-      level: 4,
-      type: HierarchyType.HEADING,
     },
   ]);
 });

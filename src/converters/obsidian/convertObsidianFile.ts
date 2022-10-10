@@ -1,6 +1,8 @@
 import { NodeType, TanaIntermediateNode } from '../../types/types';
 import { convertMarkdownNode } from './convertMarkdownNode';
+import { createTree } from './createTree';
 import { HierarchyType, MarkdownNode, extractMarkdownNodes } from './extractMarkdownNodes';
+import { HeadingTracker } from './filterHeadingLinks';
 import { UidRequestType, VaultContext } from './VaultContext';
 import moment from 'moment'
 
@@ -9,9 +11,21 @@ export function convertObsidianFile(
   fileContent: string,
   context: VaultContext,
   today: number = Date.now(),
+  headingTracker?: HeadingTracker,
 ) {
-  let obsidianNodes = extractMarkdownNodes(fileContent);
+  let startIndex = 0;
+
+  if (fileContent.startsWith('---\n')) {
+    const frontMatterEndIndex = fileContent.indexOf('\n---\n');
+    if (frontMatterEndIndex !== -1) {
+      startIndex = frontMatterEndIndex + '\n---\n'.length;
+    }
+  }
+
+  let obsidianNodes = extractMarkdownNodes(fileContent, startIndex);
   let displayName = fileName;
+
+  //LogSeq specific
   const name = obsidianNodes[0] && obsidianNodes[0].content.match(/^title::(.+)$/);
   if (name) {
     displayName = name[1];
@@ -23,17 +37,26 @@ export function convertObsidianFile(
     obsidianNodes = obsidianNodes.slice(1);
   }
 
-  const rootNode = createFileNode(displayName, today, context);
-  context.summary.topLevelNodes++;
+  const headingNodes: (MarkdownNode & { uid: string })[] = [];
 
-  //TODO: broken refs
+  const fileNode = createFileNode(displayName, today, context);
 
-  const lastObsidianNodes: MarkdownNode[] = [{ type: HierarchyType.ROOT, level: -1 } as MarkdownNode];
-  const lastTanaNodes = [fileNode];
-  for (const node of obsidianNodes) {
-    const childNode = convertMarkdownNode(fileName, node, today, context);
-    insertNodeIntoHierarchy(childNode, node, lastObsidianNodes, lastTanaNodes);
-  }
+  createTree(
+    fileNode,
+    { type: HierarchyType.ROOT, level: -1 } as MarkdownNode,
+    obsidianNodes,
+    isChild,
+    (markdownNode) => {
+      return convertMarkdownNode(fileName, markdownNode, today, context);
+    },
+    (tanaNode, markdownNode) => {
+      if (markdownNode.type === HierarchyType.HEADING) {
+        headingNodes.push({ ...markdownNode, uid: tanaNode.uid });
+      }
+    },
+  );
+
+  headingTracker?.set(fileName, headingNodes);
 
   return fileNode;
 }
@@ -58,39 +81,6 @@ function createFileNode(displayName: string, today: number, context: VaultContex
   };
 }
 
-function insertNodeIntoHierarchy(
-  tanaNode: TanaIntermediateNode,
-  obsidianNode: MarkdownNode,
-  lastObsidianNodes: MarkdownNode[],
-  lastTanaNodes: TanaIntermediateNode[],
-) {
-  //once the non-parent nodes are removed, the next one is the parent
-  removeNonParentNodes(obsidianNode, lastObsidianNodes, lastTanaNodes);
-  const lastObsidianNode = lastObsidianNodes[lastObsidianNodes.length - 1];
-  const lastTanaNode = lastTanaNodes[lastTanaNodes.length - 1];
-  if (lastObsidianNode && lastTanaNode) {
-    lastTanaNode.children = lastTanaNode.children ?? [];
-    lastTanaNode.children.push(tanaNode);
-  }
-  lastObsidianNodes.push(obsidianNode);
-  lastTanaNodes.push(tanaNode);
-}
-
-function removeNonParentNodes(
-  obsidianNode: MarkdownNode,
-  lastObsidianNodes: MarkdownNode[],
-  lastTanaNodes: TanaIntermediateNode[],
-) {
-  let lastObsidianNode = lastObsidianNodes[lastObsidianNodes.length - 1];
-  let lastTanaNode = lastTanaNodes[lastTanaNodes.length - 1];
-  while (lastObsidianNode && lastTanaNode && !isChild(lastObsidianNode, obsidianNode)) {
-    lastObsidianNodes.pop();
-    lastTanaNodes.pop();
-    lastObsidianNode = lastObsidianNodes[lastObsidianNodes.length - 1];
-    lastTanaNode = lastTanaNodes[lastTanaNodes.length - 1];
-  }
-}
-
 function isChild(potentialParent: MarkdownNode, potentialChild: MarkdownNode) {
   if (potentialParent.type === HierarchyType.ROOT) {
     return true;
@@ -113,10 +103,6 @@ function isChild(potentialParent: MarkdownNode, potentialChild: MarkdownNode) {
   return false;
 }
 
-// function isDailyNote(displayName: string, dailyNoteFormat: string): boolean
-// {
-//   return (dateStringToDateUID(displayName, dailyNoteFormat)?.length > 0);
-// }
 
 function dateStringToDateUID(displayName: string, dateFormat: string): string
 {

@@ -17,10 +17,10 @@ export interface MarkdownNode extends Hierarchy {
   content: string;
 }
 
-export function extractMarkdownNodes(content: string): MarkdownNode[] {
+export function extractMarkdownNodes(content: string, startPosition = 0): MarkdownNode[] {
   const nodeDescs: MarkdownNode[] = [];
 
-  for (let index = 0; index < content.length; index++) {
+  for (let index = startPosition; index < content.length; index++) {
     const element = content[index];
     if (element == '\n') {
       continue;

@@ -1,6 +1,8 @@
-import { appendFileSync, unlinkSync } from 'fs';
+import { appendFileSync, readFileSync, unlinkSync } from 'fs';
 import path from 'path';
 import { createUnlinkedTanaNodes } from './createUnlinkedTanaNodes';
+import { HeadingTracker } from './filterHeadingLinks';
+import { postProcessTIFFIle } from './postProcessTIFFile';
 import { addFileNode, addParentNodeEnd, addParentNodeStart, handleVault } from './vault';
 import { VaultContext } from './VaultContext';
 
@@ -8,7 +10,7 @@ import { VaultContext } from './VaultContext';
  * Converts the vault to the Tana format and incrementally saves it, otherwise it would be to memory intensive on big vaults.
  * Due to the incremental approach the output-file will be valid JSON but not be formatted perfectly.
  */
-export function ObsidianVaultConverter(
+export async function ObsidianVaultConverter(
   vaultPath: string,
   today: number = Date.now(),
   vaultContext: VaultContext = new VaultContext(vaultPath),
@@ -21,16 +23,22 @@ export function ObsidianVaultConverter(
   } catch (e) {}
   appendFileSync(targetPath, '{\n  "version": "TanaIntermediateFile V0.1",\n  "nodes": [\n');
 
+  const headingTracker: HeadingTracker = new Map();
+
   handleVault(
     vaultContext.vaultPath,
     addParentNodeStart(targetPath, today, vaultContext),
     addParentNodeEnd(targetPath),
-    addFileNode(targetPath, today, vaultContext),
+    addFileNode(targetPath, today, vaultContext, headingTracker),
   );
 
   //the vault-node needs to be counted as a top level node
   vaultContext.summary.leafNodes--;
   vaultContext.summary.topLevelNodes++;
+
+  //post processing can be done before unlinked (it will add unlinked headings)
+  //because the unlinked summary nodes are just created by the converter and have no connection to the rest
+  await postProcessTIFFIle(targetPath, vaultContext, headingTracker);
 
   const collectedUnlinkedNodes = createUnlinkedTanaNodes(path.basename(vaultContext.vaultPath), today, vaultContext);
   if (collectedUnlinkedNodes) {

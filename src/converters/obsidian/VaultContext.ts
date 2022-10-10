@@ -13,9 +13,9 @@ interface UidData {
   obsidianLink: string;
 }
 
-interface HeadingUidData {
+export interface HeadingUidData {
   uid: string;
-  link: string[];
+  link: string[]; //without the fileName
 }
 
 enum BlockUidRequestType {
@@ -51,10 +51,6 @@ function detectLinkType(link: string[]) {
   return LinkType.DEFAULT;
 }
 
-//this is used for easier replacing the Heading Link UIDs in the post processing
-//whoever uses this string in his text will be disregarded
-export const HEADING_LINK_PREFIX = '$$!HEADING_LINK!$$';
-
 export function extractBlockId(content: string): [string, string | undefined] {
   let id;
 
@@ -87,12 +83,14 @@ export class VaultContext {
     brokenRefs: 0,
   };
   //we will need to expand this to be able to support relative paths
+
   //all normal ([[fileName]]), file or folder uids: <name, UidData>
   defaultLinkTracker = new Map<string, UidData>();
   //all heading temp-uids: <fileName, HeadingUidData[]>
   headingLinkTracker = new Map<string, HeadingUidData[]>();
   //all block uids: <fileName, <blockObsidianUid, TanaUid>>
-  blockLinkTrack = new Map<string, Map<string, BlockUidData>>();
+  blockLinkTracker = new Map<string, Map<string, BlockUidData>>();
+  invalidLinks: { uid: string; link: string }[] = [];
 
   dailyNoteFormat = 'YYYY-MM-DD' //Default obsidian Daily note format
 
@@ -187,17 +185,17 @@ export class VaultContext {
     const fileName = link[0];
     const fileHeadingData = this.headingLinkTracker.get(fileName) ?? [];
     this.headingLinkTracker.set(fileName, fileHeadingData);
-    //TODO:
     //these "uids" are replaced and counted later
-    const uid = HEADING_LINK_PREFIX + fileHeadingData.length;
+    //but for the tests it needs to be understood that the id generator is called more times than are valid ids in the end
+    const uid = this.idGenerator();
     fileHeadingData.push({ uid, link: link.slice(1) });
     return uid;
   }
 
   private handleBlockLink(link: string[], requestType: BlockUidRequestType) {
     const fileName = link[0];
-    const blockUidMap = this.blockLinkTrack.get(fileName) ?? new Map<string, BlockUidData>();
-    this.blockLinkTrack.set(fileName, blockUidMap);
+    const blockUidMap = this.blockLinkTracker.get(fileName) ?? new Map<string, BlockUidData>();
+    this.blockLinkTracker.set(fileName, blockUidMap);
     const blockObsidianUid = link[1];
     let blockUidData = blockUidMap.get(blockObsidianUid);
     if (!blockUidData) {
@@ -223,14 +221,21 @@ export class VaultContext {
     this.summary.leafNodes++;
   }
 
+  addInvalidLinks(links: { uid: string; link: string }[]) {
+    links.forEach((link) => {
+      this.invalidLinks.push(link);
+      this.incrementSummary();
+    });
+  }
+
   getAllInvalidContentLinks() {
-    const unlinkedNodes: { uid: string; link: string }[] = [];
+    const unlinkedNodes: { uid: string; link: string }[] = [...this.invalidLinks];
     for (const node of this.defaultLinkTracker.values()) {
       if (node.type === UidRequestType.CONTENT) {
         unlinkedNodes.push({ uid: node.uid, link: node.obsidianLink });
       }
     }
-    for (const fileBlockLinks of this.blockLinkTrack.values()) {
+    for (const fileBlockLinks of this.blockLinkTracker.values()) {
       for (const blockLink of fileBlockLinks.values()) {
         if (blockLink.type === BlockUidRequestType.LINK) {
           unlinkedNodes.push({ uid: blockLink.uid, link: blockLink.obsidianLink });

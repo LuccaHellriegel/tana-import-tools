@@ -1,5 +1,6 @@
 import { NodeType, TanaIntermediateNode } from '../../types/types';
 import { getBracketLinks } from '../../utils/utils';
+import { extractImageLinks } from './extractImageLinks';
 import { MarkdownNode } from './extractMarkdownNodes';
 import { UidRequestType, VaultContext } from './VaultContext';
 
@@ -18,30 +19,74 @@ export function convertMarkdownNode(
     type: 'node' as NodeType,
   };
 
-  //TODO: reuse the regexs
-
-  //TODO: aliases
-  //TODO: convert to different node types, remove markdown formatting etc.
-  const n = tanaNode.name;
+  //LogSeq specific
   tanaNode.name = tanaNode.name.replace('collapsed:: true', '').replace(/^#+ /, '').trim();
-  // links with alias
-  tanaNode.name = tanaNode.name.replace(/\[\[([^|]+)\|([^\]]+)\]\]/g, '[$1]([[$2]])');
+
   // tags, convert to links for now
   tanaNode.name = tanaNode.name.replace(/(?:\s|^)(#([^[]]+?))(?:(?=\s)|$)/g, ' #[[$2]]');
 
-  const foundUids = getBracketLinks(tanaNode.name, true).map((link) => [
-    link,
-    vaultContext.uidRequest(link, UidRequestType.CONTENT),
-  ]);
+  const foundUids = getBracketLinks(tanaNode.name, true).map((bracketLink) => {
+    //handling aliases
+    const aliasArr = bracketLink.split('|');
+    const link = aliasArr[0];
+    const alias = aliasArr[1];
+    const foundUid = vaultContext.uidRequest(link, UidRequestType.CONTENT);
+    const result =
+      alias !== undefined && alias.trim() !== ''
+        ? '[' + alias.trim() + ']([[' + foundUid + ']])'
+        : '[[' + foundUid + ']]';
+
+    return [bracketLink, foundUid, result];
+  });
 
   if (foundUids.length > 0 && !tanaNode.refs) {
     tanaNode.refs = [];
   }
 
-  for (const [link, linkUid] of foundUids) {
-    tanaNode.refs?.push(linkUid);
-    tanaNode.name = tanaNode.name.replaceAll('[[' + link + ']]', '[[' + linkUid + ']]');
+  for (const [link, foundUid, result] of foundUids) {
+    tanaNode.refs?.push(foundUid);
+    tanaNode.name = tanaNode.name.replaceAll('[[' + link + ']]', result);
   }
 
+  handleImages(tanaNode, today, vaultContext);
+
   return tanaNode;
+}
+
+function handleImages(tanaNode: TanaIntermediateNode, today: number, vaultContext: VaultContext) {
+  const imageData = extractImageLinks(tanaNode.name);
+  if (imageData.length === 0) {
+    return;
+  }
+  if (imageData.length === 1) {
+    const image = imageData[0];
+    tanaNode.type = 'image';
+    tanaNode.mediaUrl = image[1].trim();
+    tanaNode.name = tanaNode.name.replace(image[3], image[0].trim());
+    return;
+  }
+
+  //more than one image means we add them as child nodes
+  const childImageNodes: TanaIntermediateNode[] = [];
+
+  imageData.forEach((image) => {
+    const altText = image[0];
+    const url = image[1];
+    //filter out duplicate image uses
+    if (childImageNodes.every((node) => altText.trim() !== node.name || url.trim() !== node.mediaUrl)) {
+      const oldLink = image[3];
+      const uid = vaultContext.randomUid();
+      tanaNode.name = tanaNode.name.replaceAll(oldLink, '[[' + uid + ']]');
+      childImageNodes.push({
+        uid,
+        name: altText.trim(),
+        createdAt: today,
+        editedAt: today,
+        type: 'image' as NodeType,
+        mediaUrl: url.trim(),
+      });
+    }
+  });
+
+  tanaNode.children = [...(tanaNode.children ?? []), ...childImageNodes];
 }

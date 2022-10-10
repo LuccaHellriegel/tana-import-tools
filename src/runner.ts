@@ -6,7 +6,7 @@ import { TanaIntermediateFile } from './types/types';
 import { WorkflowyConverter } from './converters/workflowy';
 import { lstatSync } from 'fs';
 import path from 'path';
-import { ObsidianSingleFileConverter, ObsidianVaultConverter } from './converters/obsidian';
+import { ObsidianVaultConverter } from './converters/obsidian';
 
 const fileType = process.argv[2];
 const file = process.argv[3];
@@ -48,9 +48,6 @@ function handleSingleFileConversion() {
     case 'workflowy':
       tanaIntermediteFile = new WorkflowyConverter().convert(contents);
       break;
-    case 'obsidian':
-      tanaIntermediteFile = ObsidianSingleFileConverter(path.basename(file).replace('.md', ''), contents);
-      break;
     default:
       console.log(`File type ${fileType} is not supported for single files`);
       exit(0);
@@ -66,12 +63,12 @@ function handleSingleFileConversion() {
   saveFile(file, tanaIntermediteFile);
 }
 
-function handleFolderConversion() {
+async function handleFolderConversion() {
   console.log(`\n\nReading folder: ${file} for import as: ${fileType}`);
   let summary;
   switch (fileType) {
     case 'obsidian':
-      summary = ObsidianVaultConverter(file);
+      summary = await ObsidianVaultConverter(file);
       break;
     default:
       console.log(`File type ${fileType} is not supported for folders`);
