@@ -10,6 +10,7 @@ import { ObsidianVaultConverter } from './converters/obsidian';
 
 const fileType = process.argv[2];
 const file = process.argv[3];
+const obsidianDailyNoteFormat = process.argv[4];
 
 if (!fileType) {
   console.log('No file type provided');

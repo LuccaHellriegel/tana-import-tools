@@ -13,13 +13,10 @@ import { VaultContext } from './VaultContext';
 export async function ObsidianVaultConverter(
   vaultPath: string,
   today: number = Date.now(),
-  vaultContext: VaultContext = new VaultContext(),
+  vaultContext: VaultContext = new VaultContext(vaultPath),
 ) {
-  if (vaultPath.endsWith('/')) {
-    vaultPath = vaultPath.slice(0, -1);
-  }
 
-  const targetPath = `${vaultPath}.tif.json`;
+  const targetPath = `${vaultContext.vaultPath}.tif.json`;
   try {
     unlinkSync(targetPath);
     // eslint-disable-next-line no-empty
@@ -29,7 +26,7 @@ export async function ObsidianVaultConverter(
   const headingTracker: HeadingTracker = new Map();
 
   handleVault(
-    vaultPath,
+    vaultContext.vaultPath,
     addParentNodeStart(targetPath, today, vaultContext),
     addParentNodeEnd(targetPath),
     addFileNode(targetPath, today, vaultContext, headingTracker),
@@ -43,7 +40,7 @@ export async function ObsidianVaultConverter(
   //because the unlinked summary nodes are just created by the converter and have no connection to the rest
   await postProcessTIFFIle(targetPath, vaultContext, headingTracker);
 
-  const collectedUnlinkedNodes = createUnlinkedTanaNodes(path.basename(vaultPath), today, vaultContext);
+  const collectedUnlinkedNodes = createUnlinkedTanaNodes(path.basename(vaultContext.vaultPath), today, vaultContext);
   if (collectedUnlinkedNodes) {
     appendFileSync(targetPath, ', ' + JSON.stringify(collectedUnlinkedNodes, null, 2));
   }

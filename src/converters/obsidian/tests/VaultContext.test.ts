@@ -3,7 +3,7 @@ import { UidRequestType, VaultContext } from '../VaultContext';
 import { deterministicGenerator } from './testUtils';
 
 test('VaultContext uid test', () => {
-  const vaultContext = new VaultContext(deterministicGenerator());
+  const vaultContext = new VaultContext('',deterministicGenerator());
   expect(vaultContext.uidRequest('link', UidRequestType.CONTENT)).toBe('0');
   //no change on second call
   expect(vaultContext.uidRequest('link', UidRequestType.CONTENT)).toBe('0');
@@ -33,7 +33,7 @@ test('VaultContext uid test', () => {
 
 test('VaultContext uid block link test', () => {
   //first reading the file, then encountering the block ref
-  const vaultContext = new VaultContext(deterministicGenerator());
+  const vaultContext = new VaultContext('',deterministicGenerator());
   const [uid, content] = vaultContext.contentUid('fileName', 'content ^uid');
   expect(uid).toBe('0');
   expect(content).toBe('content');
@@ -56,8 +56,13 @@ test('VaultContext uid block link test', () => {
 });
 
 test('VaultContext invalid nodes test', () => {
-  const vaultContext = new VaultContext(deterministicGenerator());
+  const vaultContext = new VaultContext('',deterministicGenerator());
   //the block link has not been accessed from its source / has not been found - just used
   vaultContext.uidRequest('fileName#^uid', UidRequestType.CONTENT);
   expect(vaultContext.getAllInvalidContentLinks()).toStrictEqual([{ uid: '0', link: 'fileName#^uid' }]);
+});
+
+test('date to UID date util', () => {
+  const vaultContext = new VaultContext('./src/converters/obsidian/tests/fixtures/vault')
+  expect(vaultContext.dailyNoteFormat).toBe('DD-MM-YYYY')
 });

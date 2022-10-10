@@ -84,3 +84,4 @@ function isChild(potentialParent: MarkdownNode, potentialChild: MarkdownNode) {
 
   return false;
 }
+
