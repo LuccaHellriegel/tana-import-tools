@@ -105,7 +105,8 @@ export class VaultContext {
     const dailyNotesConfigFile = vaultPath + '/.obsidian/daily-notes.json';
 
     if(fs.existsSync(dailyNotesConfigFile)) { //if file does not exists, daily note config was kept default
-      const dailyNoteConfig = require(dailyNotesConfigFile);
+      let rawjson = fs.readFileSync(dailyNotesConfigFile);
+      let dailyNoteConfig = JSON.parse(rawjson.toString());
       this.dailyNoteFormat = dailyNoteConfig.format;
     }
   }
