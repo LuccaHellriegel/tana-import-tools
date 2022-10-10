@@ -3,17 +3,24 @@ import { FrontmatterData } from './parseFrontmatter';
 import { UidRequestType, VaultContext } from './VaultContext';
 import moment from 'moment'
 
+function frontMatterToFieldNode(data: FrontmatterData, today: number, context: VaultContext): TanaIntermediateNode {
+  return { uid: context.randomUid(), name: data.values.join(', '), type: 'field', createdAt: today, editedAt: today };
+}
+
 export function createFileNode(
   displayName: string,
   today: number,
   context: VaultContext,
   frontmatter: FrontmatterData[],
 ): TanaIntermediateNode {
-  const supertags: string[] = [];
+  let supertags: string[] | undefined;
+  const fieldNodes: TanaIntermediateNode[] = [];
 
   frontmatter.forEach((data) => {
     if (data.key === 'tags') {
-      supertags.push(...data.values.map((val) => context.superTagUid(val)));
+      supertags = data.values.map((val) => context.superTagUid(val));
+    } else {
+      fieldNodes.push(frontMatterToFieldNode(data, today, context));
     }
   });
 
@@ -33,7 +40,8 @@ export function createFileNode(
     createdAt: today,
     editedAt: today,
     type: nodeType,
-    supertags: supertags.length > 0 ? supertags : undefined,
+    supertags,
+    children: fieldNodes.length > 0 ? fieldNodes : undefined,
   };
 }
 
