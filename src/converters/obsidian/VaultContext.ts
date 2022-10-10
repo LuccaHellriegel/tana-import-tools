@@ -1,5 +1,6 @@
 import { TanaIntermediateSummary } from '../..';
 import { idgenerator as randomGenerator } from '../../utils/utils';
+import fs from 'fs'
 
 export enum UidRequestType {
   FILE,
@@ -93,7 +94,23 @@ export class VaultContext {
   //all block uids: <fileName, <blockObsidianUid, TanaUid>>
   blockLinkTrack = new Map<string, Map<string, BlockUidData>>();
 
-  constructor(public idGenerator: () => string = randomGenerator) {}
+  dailyNoteFormat = 'YYYY-MM-DD' //Default obsidian Daily note format
+
+  vaultPath: string;
+
+  constructor(vaultPath: string, public idGenerator: () => string = randomGenerator) {
+    if (vaultPath.endsWith('/')) {
+      vaultPath = vaultPath.slice(0, -1);
+    }
+
+    this.vaultPath = vaultPath;
+    const dailyNotesConfigFile = vaultPath + '/.obsidian/daily-notes.json';
+
+    if(fs.existsSync(dailyNotesConfigFile)) { //if file does not exists, daily note config was kept default
+      const dailyNoteConfig = require(dailyNotesConfigFile);
+      this.dailyNoteFormat = dailyNoteConfig.format;
+    }
+  }
 
   /**
    * Removes Obsidian-generated block-UIDs if they exists, returns the valid uid and the cleaned content.
@@ -223,4 +240,5 @@ export class VaultContext {
 
     return unlinkedNodes;
   }
+
 }

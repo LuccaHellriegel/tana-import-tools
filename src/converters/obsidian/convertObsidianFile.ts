@@ -1,12 +1,12 @@
-import { TanaIntermediateNode } from '../../types/types';
+import { NodeType, TanaIntermediateNode } from '../../types/types';
 import { convertMarkdownNode } from './convertMarkdownNode';
 import { HierarchyType, MarkdownNode, extractMarkdownNodes } from './extractMarkdownNodes';
 import { UidRequestType, VaultContext } from './VaultContext';
+import moment from 'moment'
 
 export function convertObsidianFile(
   fileName: string, //without ending
   fileContent: string,
-  dailyNoteFormat: string = 'YYYY-MM-DD', //defaults to obsidian default Daily note format
   context: VaultContext,
   today: number = Date.now(),
 ) {
@@ -23,7 +23,7 @@ export function convertObsidianFile(
     obsidianNodes = obsidianNodes.slice(1);
   }
 
-  const rootNode = createFileNode(displayName, today, context, dailyNoteFormat);
+  const rootNode = createFileNode(displayName, today, context);
   context.summary.topLevelNodes++;
 
   //TODO: broken refs
@@ -39,12 +39,22 @@ export function convertObsidianFile(
 }
 
 function createFileNode(displayName: string, today: number, context: VaultContext): TanaIntermediateNode {
+  let nodeUid = context.uidRequest(displayName, UidRequestType.FILE);
+  let nodeType: NodeType = 'node';
+  const dateDisplayName =  dateStringToDateUID(displayName, context.dailyNoteFormat);
+
+  if (dateDisplayName.length > 0) {
+    nodeUid = dateDisplayName;
+    nodeType = 'date';
+    displayName = dateDisplayName;
+  }
+
   return {
-    uid: context.uidRequest(displayName, UidRequestType.FILE),
+    uid: nodeUid,
     name: displayName,
     createdAt: today,
     editedAt: today,
-    type: 'node',
+    type: nodeType,
   };
 }
 
@@ -101,4 +111,18 @@ function isChild(potentialParent: MarkdownNode, potentialChild: MarkdownNode) {
   }
 
   return false;
+}
+
+// function isDailyNote(displayName: string, dailyNoteFormat: string): boolean
+// {
+//   return (dateStringToDateUID(displayName, dailyNoteFormat)?.length > 0);
+// }
+
+function dateStringToDateUID(displayName: string, dateFormat: string): string
+{
+  let date= moment(displayName, dateFormat);
+  if (date.isValid()){
+    return date.format('MM-DD-YYYY');
+  }
+  return '';
 }

@@ -11,13 +11,10 @@ import { VaultContext } from './VaultContext';
 export function ObsidianVaultConverter(
   vaultPath: string,
   today: number = Date.now(),
-  vaultContext: VaultContext = new VaultContext(),
+  vaultContext: VaultContext = new VaultContext(vaultPath),
 ) {
-  if (vaultPath.endsWith('/')) {
-    vaultPath = vaultPath.slice(0, -1);
-  }
 
-  const targetPath = `${vaultPath}.tif.json`;
+  const targetPath = `${vaultContext.vaultPath}.tif.json`;
   try {
     unlinkSync(targetPath);
     // eslint-disable-next-line no-empty
@@ -25,7 +22,7 @@ export function ObsidianVaultConverter(
   appendFileSync(targetPath, '{\n  "version": "TanaIntermediateFile V0.1",\n  "nodes": [\n');
 
   handleVault(
-    vaultPath,
+    vaultContext.vaultPath,
     addParentNodeStart(targetPath, today, vaultContext),
     addParentNodeEnd(targetPath),
     addFileNode(targetPath, today, vaultContext),
@@ -35,7 +32,7 @@ export function ObsidianVaultConverter(
   vaultContext.summary.leafNodes--;
   vaultContext.summary.topLevelNodes++;
 
-  const collectedUnlinkedNodes = createUnlinkedTanaNodes(path.basename(vaultPath), today, vaultContext);
+  const collectedUnlinkedNodes = createUnlinkedTanaNodes(path.basename(vaultContext.vaultPath), today, vaultContext);
   if (collectedUnlinkedNodes) {
     appendFileSync(targetPath, ', ' + JSON.stringify(collectedUnlinkedNodes, null, 2));
   }
